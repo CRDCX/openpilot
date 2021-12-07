@@ -1,3 +1,4 @@
+import time
 from cereal import car
 from common.realtime import DT_CTRL
 from common.numpy_fast import interp, clip
@@ -6,6 +7,7 @@ from selfdrive.car import apply_std_steer_torque_limits, create_gas_interceptor_
 from selfdrive.car.gm import gmcan
 from selfdrive.car.gm.values import DBC, NO_ASCM, CanBus, CarControllerParams
 from opendbc.can.packer import CANPacker
+from selfdrive.swaglog import cloudlog
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 
@@ -15,6 +17,7 @@ class CarController():
     self.start_time = 0.
     self.apply_steer_last = 0
     self.lka_steering_cmd_counter_last = -1
+    self.lka_last_time = 0.
     self.lka_icon_status_last = (False, False)
     self.steer_rate_limited = False
 
@@ -33,11 +36,12 @@ class CarController():
     can_sends = []
 
     # Steering (50Hz)
-    # Avoid GM EPS faults when transmitting messages too close together: skip this transmit if we just received the
-    # next Panda loopback confirmation in the current CS frame.
-    if CS.lka_steering_cmd_counter != self.lka_steering_cmd_counter_last:
-      self.lka_steering_cmd_counter_last = CS.lka_steering_cmd_counter
-    elif (frame % P.STEER_STEP) == 0:
+    if (frame % P.STEER_STEP) == 0:
+      # # Avoid GM EPS faults when transmitting messages too close together: skip this transmit if we just received the
+      # # next Panda loopback confirmation in the current CS frame.
+      # if CS.lka_steering_cmd_counter != self.lka_steering_cmd_counter_last:
+      #   self.lka_steering_cmd_counter_last = CS.lka_steering_cmd_counter
+      # else:
       lkas_enabled = enabled and not (CS.out.steerWarning or CS.out.steerError) and CS.out.vEgo > P.MIN_STEER_SPEED
       if lkas_enabled:
         new_steer = int(round(actuators.steer * P.STEER_MAX))
@@ -51,7 +55,12 @@ class CarController():
       # moment of disengaging, increment the counter based on the last message known to pass Panda safety checks.
       idx = (CS.lka_steering_cmd_counter + 1) % 4
 
-      can_sends.append(gmcan.create_steering_control(self.packer_pt, CanBus.POWERTRAIN, apply_steer, idx, lkas_enabled))
+      timenow = time.monotonic()
+      if timenow - self.lka_last_time >= 0.02: #TODO: maybe need to relax to 0.0199 or something
+        self.lka_last_time = timenow
+        can_sends.append(gmcan.create_steering_control(self.packer_pt, CanBus.POWERTRAIN, apply_steer, idx, lkas_enabled))
+      else:
+        cloudlog.info("####GM Dropped too-fast frame!")
 
     if not enabled:
       # Stock ECU sends max regen when not enabled.
