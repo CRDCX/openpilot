@@ -39,10 +39,10 @@ class CarControllerParams():
       self.STEER_DELTA_UP = 3          # ~0.75s time to peak torque (255/50hz/0.75s)
       self.STEER_DELTA_DOWN = 7       # ~0.3s from peak torque to zero
     elif CP.carFingerprint in HIGH_TORQUE:
-      self.STEER_MAX = 600  # Safety limit, not LKA max. Trucks use 600.
-      self.STEER_DELTA_UP = 14
-      self.STEER_DELTA_DOWN = 34
-      self.STEER_DRIVER_ALLOWANCE = 100
+      self.STEER_MAX = 450  # Safety limit, not LKA max. Trucks use 600.
+      self.STEER_DELTA_UP = 10.5
+      self.STEER_DELTA_DOWN = 25.5
+      self.STEER_DRIVER_ALLOWANCE = 75
       self.STEER_DRIVER_MULTIPLIER = 4
       self.STEER_DRIVER_FACTOR = 100
     
@@ -238,7 +238,7 @@ FINGERPRINTS = {
 
 EV_CAR = set([CAR.BOLT_NR, CAR.VOLT, CAR.VOLT_NR])
 NO_ASCM = set([CAR.VOLT_NR, CAR.MALIBU_NR, CAR.ACADIA_NR, CAR.BOLT_NR, CAR.EQUINOX_NR, CAR.TAHOE_NR, CAR.SILVERADO_NR, CAR.SUBURBAN])
-HIGH_TORQUE = set([CAR.SILVERADO_NR])
+HIGH_TORQUE = set([CAR.SILVERADO_NR, CAR.ESCALADE_ESV])
 
 DBC = {
   CAR.HOLDEN_ASTRA: dbc_dict('gm_global_a_powertrain_generated', 'gm_global_a_object', chassis_dbc='gm_global_a_chassis'),
